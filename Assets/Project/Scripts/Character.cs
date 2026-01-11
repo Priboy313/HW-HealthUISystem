@@ -1,0 +1,126 @@
+using HealthUISystem;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public abstract class Character : MonoBehaviour, IHealthOwner
+{
+	[SerializeField] private float _healthCurrent;
+	[SerializeField, Min(1)] private float _healthMax = 1;
+	[SerializeField] private float _damage = 0;
+
+	//private List<Damageable> _damageableParts = new();
+
+	private List<IHealthUI> _healthUI = new();
+
+	public float Damage => _damage;
+
+	public event Action<Vector3> ActionKnockback;
+
+	private void Awake()
+	{
+		_healthCurrent = _healthMax;
+
+		//Damageable[] damageables = GetComponentsInChildren<Damageable>();
+
+		//if (damageables.Length > 0)
+		//{
+		//	_damageableParts.AddRange(damageables);
+		//}
+		//else
+		//{
+		//	Debug.LogError("Damageable parts not set!", this);
+		//	enabled = false;
+		//}
+
+		//DamageDealer[] damagings = GetComponentsInChildren<DamageDealer>();
+
+		//if (damagings.Length > 0)
+		//{
+		//	foreach (DamageDealer part in damagings)
+		//	{
+		//		part.Init(this);
+		//	}
+		//}
+
+		//Collector collector = GetComponentInChildren<Collector>();
+
+		//if (collector != null)
+		//{
+		//	collector.Init(this);
+		//}
+
+		IHealthUI[] healthUI = GetComponentsInChildren<IHealthUI>();
+
+		if (healthUI.Length > 0)
+		{
+			_healthUI.AddRange(healthUI);
+			UpdateUIHealth();
+		}
+	}
+
+	//private void OnEnable()
+	//{
+	//	foreach (Damageable part in _damageableParts)
+	//	{
+	//		part.ActionDamageTaken += OnDamageTaken;
+	//	}
+	//}
+
+	//private void OnDisable()
+	//{
+	//	foreach (Damageable part in _damageableParts)
+	//	{
+	//		part.ActionDamageTaken -= OnDamageTaken;
+	//	}
+	//}
+
+	protected virtual void OnDamageTaken(float damage, Vector3 sourcePosition, bool canKnockback)
+	{
+		_healthCurrent -= damage;
+		UpdateUIHealth();
+		
+		if (_healthCurrent <= 0)
+		{
+			Die();
+		}
+		else
+		{
+			if (canKnockback)
+			{
+				ActionKnockback?.Invoke(sourcePosition);
+			}
+		}
+	}
+
+	protected virtual void Die()
+	{
+		Destroy(gameObject);
+	}
+
+	public virtual void OnHealTaken(float heal)
+	{
+		if (heal > 0)
+		{
+			float newHealth = _healthCurrent + heal;
+			_healthCurrent = newHealth > _healthMax ? _healthMax : newHealth;
+			UpdateUIHealth();
+		}
+	}
+
+	public void OnDamageTaken(float value)
+	{
+		OnDamageTaken(value, transform.position, false);
+	}
+
+	private void UpdateUIHealth()
+	{
+		if (_healthUI.Count > 0)
+		{
+			foreach (var ui in _healthUI)
+			{
+				ui.SetHealth(_healthCurrent, _healthMax);
+			}
+		}
+	}
+}
